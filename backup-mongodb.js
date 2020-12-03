@@ -75,7 +75,10 @@ config.mongo.password ? '-p '+'"'+config.mongo.password+'"' : '',
 '-o', tempBackupDir,
 '-h', config.mongo.host + ":" + config.mongo.port];
 
-nodeCLI.exec('docker', 'exec', '-it', 'mongo', 'mongodump', ...args);
+nodeCLI.exec('docker', 'exec', '-it', 'mongo', 'mongodump', ...args, function(code, output) {
+  console.log('Exit code:', code);
+  console.log('Program output:', output);
+});
 
 
 //---------------------------------------------
