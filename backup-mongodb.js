@@ -89,6 +89,20 @@ nodeCLI.exec('docker', 'exec', 'mongo', 'mongodump', ...args, function(code, out
 var timeString = moment().format("YYYY-MM-DD");
 var backupFileName = "nodebb-db-" + config.mongo.database + '-' + timeString + '.zip';
 var outputFilePath = path.join(pwd, "..", backupFileName);
+
+// remove old zip 
+try {
+  if (fs.existsSync(outputFilePath)) {
+    //try to clean it up
+    fs.removeSync(outputFilePath);
+    if (fs.existsSync(outputFilePath)) { throw new Error("Unable to remove: " + outputFilePath); }
+  }
+} catch (err) {
+  console.error("Unable to continue.", err);
+  process.exit(1);
+}
+
+
 var output = fs.createWriteStream(outputFilePath);
 var archive = archiver('zip');
 
@@ -104,6 +118,6 @@ archive.finalize();
 output.on('close', function() {
   var len = (archive.pointer() / 1024) / 1024;
   console.log(len + ' MB');
-  // fs.remove(mountDir);
+  fs.remove(mountDir);
   console.log("Done and cleaned up");
 });
