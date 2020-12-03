@@ -9,8 +9,6 @@ console.log('Preparing to backup NodeBB');
 var pwd = process.argv[2];
 console.log("Present Working Directory: " + pwd);
 
-var dockerName = process.argv[3];
-
 //---------------------------------------------
 //Find and load config.json settings for NodeBB, give warning and exit if not Mongo
 //---------------------------------------------
@@ -61,7 +59,9 @@ console.log("Found NodeBB version: " + package.version);
 //---------------------------------------------
 
 
-var tempBackupDir = path.join(pwd, "/temp-backup");
+var tempBackupDir = "/data/db/temp-backup";
+var mountDir = path.join('../mongo-db', 'temp-backup');
+
 console.log("creating temp backup directory at: " + tempBackupDir);
 try {
   if (fs.existsSync(tempBackupDir)) {
@@ -90,11 +90,8 @@ config.mongo.password ? '-p '+'"'+config.mongo.password+'"' : '',
 '-o', tempBackupDir,
 '-h', config.mongo.host + ":" + config.mongo.port];
 
-if (dockerName) {
-  nodeCLI.exec('docker', 'exec', '-it', dockerName, 'mongodump', ...args);
-} else {
-  nodeCLI.exec('mongodump', ...args);
-}
+nodeCLI.exec('docker', 'exec', '-it', 'mongo', 'mongodump', ...args);
+
 
 //---------------------------------------------
 //Now zip them up, give them a reasonable name and move the whole thing up one directory to get out of this git repo
@@ -113,12 +110,12 @@ archive.on('error', function(err){
     throw err;
 });
 archive.pipe(output);
-archive.directory(tempBackupDir, 'db/');
+archive.directory(mountDir, 'db/');
 archive.finalize();
 
 output.on('close', function() {
   var len = (archive.pointer() / 1024) / 1024;
   console.log(len + ' MB');
-  fs.remove(tempBackupDir);
+  // fs.remove(mountDir);
   console.log("Done and cleaned up");
 });
