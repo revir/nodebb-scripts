@@ -9,6 +9,7 @@ console.log('Preparing to backup NodeBB');
 var pwd = process.argv[2];
 console.log("Present Working Directory: " + pwd);
 
+var dockerName = process.argv[3];
 
 //---------------------------------------------
 //Find and load config.json settings for NodeBB, give warning and exit if not Mongo
@@ -83,7 +84,7 @@ fs.mkdirSync(tempBackupDir);
 console.log("About to backup db: " + config.mongo.database);
 
 nodeCLI.exec(
-    'mongodump',
+    dockerName ? 'docker exec -it ' + dockerName + ' mongodump' : 'mongodump',
     '-v',
     '-d', config.mongo.database,
     config.mongo.username ? '-u '+config.mongo.username : '',
