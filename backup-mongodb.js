@@ -62,24 +62,9 @@ console.log("Found NodeBB version: " + package.version);
 var tempBackupDir = "/data/db/temp-backup";
 var mountDir = path.join('../mongo-db', 'temp-backup');
 
-console.log("creating temp backup directory at: " + tempBackupDir);
-try {
-  if (fs.existsSync(tempBackupDir)) {
-    //try to clean it up
-    fs.removeSync(tempBackupDir);
-    if (fs.existsSync(tempBackupDir)) { throw new Error("Unable to remove dir"); }
-  }
-} catch (err) {
-  console.log("Unable to continue.  Dirty backup dir already exists at: " + tempBackupDir + "\n" + err);
-  process.exit(1);
-}
-
-fs.mkdirSync(tempBackupDir);
-
 //---------------------------------------------
 //MongoDump into temp-backup directory
 //---------------------------------------------
-
 
 console.log("About to backup db: " + config.mongo.database);
 
