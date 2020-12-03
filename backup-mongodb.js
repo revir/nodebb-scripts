@@ -83,15 +83,18 @@ fs.mkdirSync(tempBackupDir);
 
 console.log("About to backup db: " + config.mongo.database);
 
-nodeCLI.exec(
-    dockerName ? 'docker exec -it ' + dockerName + ' mongodump' : 'mongodump',
-    '-v',
-    '-d', config.mongo.database,
-    config.mongo.username ? '-u '+config.mongo.username : '',
-    config.mongo.password ? '-p '+'"'+config.mongo.password+'"' : '',
-    '-o', tempBackupDir,
-    '-h', config.mongo.host + ":" + config.mongo.port
-);
+var args = ['-v',
+'-d', config.mongo.database,
+config.mongo.username ? '-u '+config.mongo.username : '',
+config.mongo.password ? '-p '+'"'+config.mongo.password+'"' : '',
+'-o', tempBackupDir,
+'-h', config.mongo.host + ":" + config.mongo.port];
+
+if (dockerName) {
+  nodeCLI.exec('docker', 'exec', '-it', dockerName, 'mongodump', ...args);
+} else {
+  nodeCLI.exec('mongodump', ...args);
+}
 
 //---------------------------------------------
 //Now zip them up, give them a reasonable name and move the whole thing up one directory to get out of this git repo
