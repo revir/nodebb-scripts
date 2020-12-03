@@ -118,6 +118,6 @@ archive.finalize();
 output.on('close', function() {
   var len = (archive.pointer() / 1024) / 1024;
   console.log(len + ' MB');
-  fs.remove(mountDir);
+  // fs.remove(mountDir); no root permission
   console.log("Done and cleaned up");
 });
