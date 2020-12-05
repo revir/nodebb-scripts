@@ -78,46 +78,46 @@ config.mongo.password ? '-p '+'"'+config.mongo.password+'"' : '',
 nodeCLI.exec('docker', 'exec', 'mongo', 'mongodump', ...args, function(code, output) {
   console.log('Exit code:', code);
   console.log('Program output:', output);
-});
+  if (code != 0) return;
+
+  //---------------------------------------------
+  //Now zip them up, give them a reasonable name and move the whole thing up one directory to get out of this git repo
+  //---------------------------------------------
 
 
-//---------------------------------------------
-//Now zip them up, give them a reasonable name and move the whole thing up one directory to get out of this git repo
-//---------------------------------------------
+  var timeString = moment().format("YYYY-MM-DD");
+  var backupFileName = "nodebb-db-" + config.mongo.database + '-' + timeString + '.zip';
+  var outputFilePath = path.join(pwd, "..", backupFileName);
 
-
-var timeString = moment().format("YYYY-MM-DD");
-var backupFileName = "nodebb-db-" + config.mongo.database + '-' + timeString + '.zip';
-var outputFilePath = path.join(pwd, "..", backupFileName);
-
-// remove old zip 
-try {
-  if (fs.existsSync(outputFilePath)) {
-    //try to clean it up
-    fs.removeSync(outputFilePath);
-    if (fs.existsSync(outputFilePath)) { throw new Error("Unable to remove: " + outputFilePath); }
+  // remove old zip 
+  try {
+    if (fs.existsSync(outputFilePath)) {
+      //try to clean it up
+      fs.removeSync(outputFilePath);
+      if (fs.existsSync(outputFilePath)) { throw new Error("Unable to remove: " + outputFilePath); }
+    }
+  } catch (err) {
+    console.error("Unable to continue.", err);
+    process.exit(1);
   }
-} catch (err) {
-  console.error("Unable to continue.", err);
-  process.exit(1);
-}
 
 
-var output = fs.createWriteStream(outputFilePath);
-var archive = archiver('zip');
+  var output = fs.createWriteStream(outputFilePath);
+  var archive = archiver('zip');
 
-console.log("Creating compressed backup file: " + outputFilePath);
+  console.log("Creating compressed backup file: " + outputFilePath);
 
-archive.on('error', function(err){
-    throw err;
-});
-archive.pipe(output);
-archive.directory(mountDir, 'db/');
-archive.finalize();
+  archive.on('error', function(err){
+      throw err;
+  });
+  archive.pipe(output);
+  archive.directory(mountDir, 'db/');
+  archive.finalize();
 
-output.on('close', function() {
-  var len = (archive.pointer() / 1024) / 1024;
-  console.log(len + ' MB');
-  // fs.remove(mountDir); no root permission
-  console.log("Done and cleaned up");
+  output.on('close', function() {
+    var len = (archive.pointer() / 1024) / 1024;
+    console.log(len + ' MB');
+    // fs.remove(mountDir); no root permission
+    console.log("Done and cleaned up");
+  });
 });
