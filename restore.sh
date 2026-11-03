@@ -20,6 +20,8 @@ Targets:
   --public-uploads      restore nodebb public/uploads
 
 Options:
+  --backup              ssh to the server and create fresh backups of the
+                        selected targets before downloading them
   --date YYYY-MM-DD     backup date to restore (default: today)
   --download-only       only download the backup files, don't restore
   -h, --help            show this help
@@ -47,11 +49,16 @@ MONGO_HOST="${MONGO_HOST:-localhost:27017}"
 MONGO_USER="${MONGO_USER:-}"
 MONGO_PASS="${MONGO_PASS:-}"
 MONGO_AUTH_DB="${MONGO_AUTH_DB:-nodebb}"
+# used by --backup; ~ is kept literal so it expands on the remote server
+REMOTE_NODEBB_DIR="${REMOTE_NODEBB_DIR:-~/pnlpal/NodeBB}"
+REMOTE_SCRIPTS_DIR="${REMOTE_SCRIPTS_DIR:-~/pnlpal/nodebb-scripts}"
+REMOTE_MONGO_CONTAINER="${REMOTE_MONGO_CONTAINER:-mongo}"
 
 doNodebb=false
 doCats=false
 doUploads=false
 downloadOnly=false
+doBackup=false
 backupDate="$(date +%Y-%m-%d)"
 
 while [[ $# -gt 0 ]]; do
@@ -61,6 +68,7 @@ while [[ $# -gt 0 ]]; do
         --cats-love-youtube) doCats=true ;;
         --public-uploads)    doUploads=true ;;
         --download-only)     downloadOnly=true ;;
+        --backup)            doBackup=true ;;
         --date)
             backupDate="${2:-}"
             if [[ ! $backupDate =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
@@ -80,6 +88,25 @@ if ! $doNodebb && ! $doCats && ! $doUploads; then
 fi
 
 mkdir -p "$LOCAL_BACKUPS_DIR"
+
+# run_remote_backup: create fresh backups of the selected targets on the server
+run_remote_backup()
+{
+    local cmds=()
+    if $doNodebb; then
+        cmds+=("/home/river/.nvm/versions/node/v18.20.3/bin/node $REMOTE_SCRIPTS_DIR/backup-mongodb.js $REMOTE_NODEBB_DIR $REMOTE_MONGO_CONTAINER nodebb")
+    fi
+    if $doCats; then
+        cmds+=("/home/river/.nvm/versions/node/v18.20.3/bin/node $REMOTE_SCRIPTS_DIR/backup-mongodb.js $REMOTE_NODEBB_DIR $REMOTE_MONGO_CONTAINER cats-love-youtube")
+    fi
+    if $doUploads; then
+        cmds+=("bash $REMOTE_SCRIPTS_DIR/backup-public-uploads.sh $REMOTE_NODEBB_DIR $REMOTE_BACKUPS_DIR")
+    fi
+    local remoteCmd
+    remoteCmd="set -e; $(printf '%s; ' "${cmds[@]}")"
+    echo "### backup on $REMOTE_HOST"
+    ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" "$remoteCmd"
+}
 
 # download <file name>: fetch a backup from the remote backups dir into LOCAL_BACKUPS_DIR
 download()
@@ -129,6 +156,9 @@ restore_uploads()
     unzip -o -q "$LOCAL_BACKUPS_DIR/$name" -d "$uploadsDir"
 }
 
+if $doBackup; then
+    run_remote_backup
+fi
 if $doNodebb; then
     restore_db nodebb
 fi
